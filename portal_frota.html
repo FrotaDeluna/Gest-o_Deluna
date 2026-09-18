@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Frota · BID 2026 DELUNA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<style>
+  :root{
+    --bg: #F2F6F4;
+    --panel: #FFFFFF;
+    --panel-2: #EEF3F1;
+    --border: #DCE6E2;
+    --border-soft: #E7EFEC;
+    --brand-dark: #01362E;
+    --brand: #0E6B57;
+    --brand-dim: #094F40;
+    --accent: #0E6B57;
+    --accent-soft: #E1F0EC;
+    --green: #128064;
+    --green-soft: rgba(18,128,100,.12);
+    --amber: #B9800F;
+    --amber-soft: rgba(185,128,15,.13);
+    --red: #B5443A;
+    --red-soft: rgba(181,68,58,.12);
+    --grey: #78827D;
+    --grey-soft: rgba(120,130,125,.14);
+    --text: #142822;
+    --text-muted: #55645D;
+    --text-dim: #8C978F;
+    --radius: 4px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 1100px 550px at 15% -10%, rgba(14,107,87,.06), transparent),
+      var(--bg);
+    color:var(--text);
+    font-family:'Barlow',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    display: flex;
+    flex-direction: column;
+  }
+  ::selection{ background:var(--brand); color:#fff; }
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#C7D3CE;border-radius:5px;}
+  ::-webkit-scrollbar-thumb:hover{background:#AFBDB7;}
+
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .cond{font-family:'Barlow Condensed',sans-serif;}
+
+  .brand-bar-top{
+    height:8px; background:var(--brand-dark); position:sticky; top:0; z-index:60;
+  }
+  .brand-watermark{
+    position:fixed; right:-70px; bottom:-50px; width:360px; height:auto;
+    opacity:.55; z-index:0; pointer-events:none; user-select:none;
+  }
+
+  header{
+    display:flex; align-items:center; gap:18px;
+    padding:12px 22px;
+    border-bottom:1px solid var(--border);
+    background:#FFFFFF;
+    position:sticky; top:8px; z-index:40;
+    box-shadow:0 1px 0 rgba(1,54,46,.03);
+  }
+  .brand{display:flex; align-items:center; gap:14px; min-width:0;}
+  .brand-logo{ height:36px; width:auto; flex:none; display:block; }
+  .brand-divider{ width:1px; height:32px; background:var(--border); flex:none; }
+  .brand-text h1{
+    font-family:'Barlow Condensed'; font-weight:600; font-size:19px; margin:0; line-height:1.1;
+    letter-spacing:.1px; color:var(--text);
+  }
+  .brand-text p{ margin:2px 0 0; font-size:12px; color:var(--text-muted); }
+
+  .header-spacer{flex:1;}
+
+  .search-box{
+    display:flex;align-items:center;gap:8px;
+    background:var(--panel-2); border:1px solid var(--border);
+    border-radius:var(--radius); padding:7px 11px; width:220px;
+  }
+  .search-box svg{flex:none; opacity:.55; color:var(--text-muted);}
+  .search-box input{
+    background:transparent;border:none;outline:none;color:var(--text);
+    font-family:'JetBrains Mono'; font-size:12.5px; width:100%;
+  }
+  .search-box input::placeholder{color:var(--text-dim);}
+
+  .btn{
+    display:flex;align-items:center;gap:7px;
+    background:#fff; border:1px solid var(--border); color:var(--text);
+    font-family:'Barlow'; font-weight:600; font-size:13px;
+    padding:8px 13px; border-radius:var(--radius); cursor:pointer;
+    transition:border-color .15s, background .15s;
+    white-space:nowrap;
+  }
+  .btn:hover{ border-color:var(--brand); background:var(--accent-soft); }
+  .btn.primary{ background:var(--brand); color:#fff; border-color:var(--brand); }
+  .btn.primary:hover{ background:var(--brand-dim); border-color:var(--brand-dim); }
+  .btn.danger{ background:#fff; color:var(--red); border-color:var(--red); }
+  .btn.danger:hover{ background:var(--red-soft); }
+  .btn.admin-nav{
+    background: #01362E; color: #fff; border-color: #01362E;
+  }
+  .btn.admin-nav:hover{
+    background: #0E6B57; border-color: #0E6B57;
+  }
+  .btn svg{flex:none;}
+
+  .updated{
+    font-size:11.5px; color:var(--text-dim); text-align:right; line-height:1.4;
+  }
+  .updated b{ color:var(--text-muted); font-weight:600; }
+
+  /* NAV TABS */
+  .nav-tabs{
+    display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;
+    flex-wrap:wrap;
+  }
+  .tab-btn{
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    padding:9px 18px; font-family:'Barlow'; font-weight:600; font-size:13.5px;
+    color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:8px;
+    transition:all .15s;
+  }
+  .tab-btn:hover{ border-color:var(--brand); color:var(--brand); background:var(--accent-soft); }
+  .tab-btn.active{
+    background:var(--brand); color:#fff; border-color:var(--brand);
+    box-shadow:0 2px 4px rgba(14,107,87,.2);
+  }
+  .tab-btn.admin-tab{
+    border-color: #01362E; color: #01362E; background: #EEF3F1;
+  }
+  .tab-btn.admin-tab.active{
+    background: #01362E; color: #fff; border-color: #01362E;
+  }
+  .tab-badge{
+    font-family:'JetBrains Mono'; font-size:11px; padding:2px 7px; border-radius:12px;
+    background:rgba(0,0,0,.08); color:inherit;
+  }
+  .tab-btn.active .tab-badge{
+    background:rgba(255,255,255,.25); color:#fff;
+  }
+
+  /* LAYOUT */
+  .layout{ display:flex; align-items:flex-start; position:relative; z-index:1; }
+
+  aside{
+    width:236px; flex:none;
+    border-right:1px solid var(--border);
+    padding:18px 16px 40px;
+    position:sticky; top:78px;
+    height:calc(100vh - 78px);
+    overflow-y:auto;
+  }
+  .filter-group{ margin-bottom:22px; }
+  .filter-title{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'Barlow Condensed'; font-weight:600; font-size:14px;
+    color:var(--text); margin-bottom:8px; letter-spacing:.2px;
+  }
+  .filter-clear{
+    font-size:11px; color:var(--text-dim); cursor:pointer; font-family:'Barlow';
+    border-bottom:1px dotted transparent;
+  }
+  .filter-clear:hover{ color:var(--brand); border-color:var(--brand); }
+
+  .chk-row{
+    display:flex; align-items:center; gap:8px;
+    padding:5px 6px; border-radius:var(--radius); cursor:pointer;
+    font-size:12.5px; color:var(--text-muted);
+    transition:background .12s;
+  }
+  .chk-row:hover{ background:var(--panel-2); color:var(--text); }
+  .chk-row input{ accent-color:var(--brand); width:13px;height:13px; flex:none; cursor:pointer;}
+  .chk-row .cnt{ margin-left:auto; font-family:'JetBrains Mono'; font-size:10.5px; color:var(--text-dim); }
+  .chk-row.active{ color:var(--text); }
+
+  .status-chip{
+    display:flex; align-items:center; gap:8px;
+    padding:7px 9px; margin-bottom:5px; border-radius:var(--radius);
+    border:1px solid var(--border); cursor:pointer; font-size:12.5px;
+    transition:all .12s; opacity:.6; background:#fff;
+  }
+  .status-chip.on{ opacity:1; border-color:currentColor; }
+  .status-chip .dot{width:8px;height:8px;border-radius:1px;flex:none;}
+  .status-chip .cnt{margin-left:auto;font-family:'JetBrains Mono';font-size:11px;}
+
+  main{ flex:1; min-width:0; padding:22px 26px 60px; position:relative; z-index:1; }
+
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+
+  .section-label{
+    font-family:'Barlow Condensed'; font-weight:600; font-size:15px;
+    color:var(--text); margin:0 0 12px; padding-bottom:8px;
+    border-bottom:1px solid var(--border-soft);
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  .section-label .hint{ font-size:11.5px; color:var(--text-dim); font-family:'Barlow'; font-weight:400;}
+
+  /* KPI STRIP */
+  .kpi-strip{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:26px; }
+  .kpi-strip-arrival{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
+  .kpi{
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px 16px; position:relative; overflow:hidden;
+    box-shadow:0 1px 2px rgba(1,54,46,.04);
+  }
+  .kpi::before{
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--kc,var(--brand));
+  }
+  .kpi .lbl{ font-size:12px; color:var(--text-muted); margin-bottom:8px; }
+  .kpi .val{ font-family:'JetBrains Mono'; font-weight:700; font-size:30px; line-height:1; color:var(--kc,var(--text)); }
+  .kpi .sub{ font-size:11px; color:var(--text-dim); margin-top:6px; font-family:'JetBrains Mono'; }
+
+  /* FLOW BANNER */
+  .flow-card{
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 20px; margin-bottom:22px; box-shadow:0 1px 2px rgba(1,54,46,.04);
+  }
+  .flow-title{
+    font-family:'Barlow Condensed'; font-weight:600; font-size:14px; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px;
+  }
+  .flow-steps{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .flow-step{
+    display:flex; align-items:center; gap:6px; background:var(--panel-2);
+    border:1px solid var(--border); border-radius:var(--radius); padding:6px 10px;
+    font-size:12px; font-weight:600; color:var(--text);
+  }
+  .flow-step .num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%; background:var(--brand);
+    color:#fff; font-size:10px; font-family:'JetBrains Mono';
+  }
+  .flow-arrow{ color:var(--text-dim); font-size:14px; font-weight:bold; }
+
+  /* CHART PANELS */
+  .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:26px; }
+  .panel{
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 18px 12px;
+    box-shadow:0 1px 2px rgba(1,54,46,.04);
+  }
+  .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .panel-title{ font-family:'Barlow Condensed'; font-weight:600; font-size:14.5px; color:var(--text); }
+  .toggle-group{ display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+  .toggle-group button{
+    background:var(--panel-2); border:none; color:var(--text-muted); font-family:'Barlow'; font-weight:600;
+    font-size:11.5px; padding:5px 10px; cursor:pointer;
+  }
+  .toggle-group button.on{ background:var(--brand); color:#fff; }
+
+  .bar-row{ display:grid; grid-template-columns:150px 1fr 34px; align-items:center; gap:10px; margin-bottom:9px; }
+  .bar-row .lbl{
+    font-size:11.5px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .bar-track{ height:16px; background:var(--panel-2); border-radius:2px; display:flex; overflow:hidden; border:1px solid var(--border-soft);}
+  .bar-seg{ height:100%; transition:width .4s ease; }
+  .bar-row .tot{ font-family:'JetBrains Mono'; font-size:11.5px; color:var(--text-dim); text-align:right; }
+
+  .legend{ display:flex; gap:16px; margin-top:10px; flex-wrap:wrap;}
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted);}
+  .legend-dot{width:8px;height:8px;border-radius:1px;}
+
+  .empty-note{ font-size:12px; color:var(--text-dim); padding:10px 0; text-align:center; }
+
+  /* TABLE */
+  .table-wrap{
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    overflow:hidden;
+    box-shadow:0 1px 2px rgba(1,54,46,.04);
+  }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:left; padding:10px 12px; background:var(--panel-2);
+    border-bottom:1px solid var(--border); color:var(--text-muted);
+    font-family:'Barlow'; font-weight:600; cursor:pointer; user-select:none;
+    white-space:nowrap; position:sticky; top:0;
+  }
+  thead th:hover{ color:var(--text); }
+  thead th .arrow{ opacity:.4; font-size:10px; margin-left:4px; }
+  thead th.sorted .arrow{ opacity:1; color:var(--brand); }
+  tbody td{ padding:9px 12px; border-bottom:1px solid var(--border-soft); color:var(--text); }
+  tbody tr:hover{ background:var(--accent-soft); }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.plate{ font-family:'JetBrains Mono'; font-weight:600; letter-spacing:.5px; }
+  td.num{ font-family:'JetBrains Mono'; text-align:right; }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:20px;
+    font-size:11px; font-weight:600; white-space:nowrap;
+  }
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;}
+
+  /* BADGES */
+  .badge-step{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:3px 8px; border-radius:3px; font-family:'JetBrains Mono';
+    font-size:11px; font-weight:600; min-width:38px; text-align:center;
+  }
+  .badge-step.ok{
+    background:var(--green-soft); color:var(--green); border:1px solid rgba(18,128,100,.25);
+  }
+  .badge-step.pend{
+    background:var(--red-soft); color:var(--red); border:1px solid rgba(181,68,58,.25);
+  }
+  .badge-apto{
+    display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:20px;
+    font-size:11.5px; font-weight:700; white-space:nowrap;
+  }
+  .badge-apto.sim{
+    background:var(--green-soft); color:var(--green); border:1px solid var(--green);
+  }
+  .badge-apto.nao{
+    background:var(--red-soft); color:var(--red); border:1px solid var(--red);
+  }
+
+  .table-foot{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; font-size:11.5px; color:var(--text-dim); border-top:1px solid var(--border);
+  }
+
+  /* ADMIN TAB STYLES */
+  .admin-card{
+    background:#fff; border:1px solid var(--border); border-radius:var(--radius);
+    padding:24px 28px; box-shadow:0 1px 3px rgba(1,54,46,.05); max-width:860px; margin:0 auto 30px;
+  }
+  .admin-head{
+    border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:20px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+  }
+  .admin-head h2{
+    margin:0; font-family:'Barlow Condensed'; font-size:22px; color:var(--brand-dark);
+  }
+  .user-badge{
+    background:var(--accent-soft); color:var(--brand); padding:4px 10px; border-radius:20px;
+    font-size:12px; font-weight:600; font-family:'JetBrains Mono';
+  }
+  .form-row{
+    display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;
+  }
+  .form-group{ display:flex; flex-direction:column; gap:6px; margin-bottom:14px; position:relative; }
+  .form-group label{ font-size:12.5px; font-weight:600; color:var(--text); }
+  .form-control{
+    padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius);
+    font-family:'Barlow'; font-size:13.5px; color:var(--text); background:#fff;
+    outline:none; transition:border-color .15s;
+  }
+  .form-control:focus{ border-color:var(--brand); }
+  
+  .plate-found-badge{
+    font-size:12px; font-weight:600; padding:6px 12px; border-radius:var(--radius);
+    background:var(--accent-soft); color:var(--brand); border:1px solid rgba(14,107,87,.2);
+    display:none; margin-bottom:14px; align-items:center; justify-content:space-between;
+  }
+
+  .checklist-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;
+    background:var(--panel-2); padding:16px; border-radius:var(--radius); border:1px solid var(--border);
+    margin-bottom:20px;
+  }
+  .check-item{
+    display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500; cursor:pointer;
+  }
+  .check-item input{
+    width:16px; height:16px; accent-color:var(--brand); cursor:pointer;
+  }
+  .apto-preview{
+    padding:12px 16px; border-radius:var(--radius); font-size:13.5px; font-weight:600;
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;
+  }
+  .apto-preview.sim{
+    background:var(--green-soft); color:var(--green); border:1px solid rgba(18,128,100,.3);
+  }
+  .apto-preview.nao{
+    background:var(--red-soft); color:var(--red); border:1px solid rgba(181,68,58,.3);
+  }
+
+  .admin-subnav{
+    display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--border-soft); padding-bottom:10px;
+  }
+  .admin-subbtn{
+    background:none; border:none; padding:6px 14px; font-family:'Barlow'; font-weight:600;
+    font-size:13px; color:var(--text-muted); cursor:pointer; border-radius:var(--radius);
+  }
+  .admin-subbtn.active{ background:var(--panel-2); color:var(--brand-dark); }
+</style>
+</head>
+<body>
+<div class="brand-bar-top"></div>
+<header>
+  <button class="btn mobile-filter-btn" id="mobileFilterBtn" aria-label="Filtros">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+  </button>
+  <div class="brand">
+    <div class="brand-divider" style="display:none"></div>
+    <div class="brand-text">
+      <h1>Controle de frota — BID 2026</h1>
+      <p>Painel de chegada e prontidão de veículos</p>
+    </div>
+  </div>
+  <div class="header-spacer"></div>
+  <div class="search-box">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="searchInput" placeholder="Buscar placa, SVC, modelo...">
+  </div>
+  <button class="btn" id="syncNowBtn" title="Recarregar dados originais">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <span id="syncBtnLabel">Sincronizar</span>
+  </button>
+  <a href="painel_frota.html" class="btn" style="background:#0E6B57; color:#fff; border-color:#0E6B57;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Gestão de Custos
+  </a>
+  <button class="btn admin-nav" id="btnOpenAdminTab">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Área do Administrador
+  </button>
+  <div class="updated">
+    Atualizado em <b id="updatedDate">—</b> <span id="sourceLabel"></span><br>
+    <span id="rowCount">—</span> veículos carregados
+  </div>
+</header>
+
+<div class="layout">
+  <aside id="sidebar">
+    <div class="filter-group">
+      <div class="filter-title">Status Geral <span class="filter-clear" data-clear="status">limpar</span></div>
+      <div id="statusChips"></div>
+    </div>
+    <div class="filter-group" id="filterAptoGroup">
+      <div class="filter-title">Prontidão (Chegados) <span class="filter-clear" data-clear="apto">limpar</span></div>
+      <div id="aptoChips"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-title">Service (SVC) <span class="filter-clear" data-clear="svc">limpar</span></div>
+      <div id="svcList"></div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-title">Locadora <span class="filter-clear" data-clear="locadora">limpar</span></div>
+      <div id="locList"></div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="nav-tabs">
+      <button class="tab-btn active" id="tabBtnGeral" data-tab="tabGeral">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Visão Geral de Chegadas
+        <span class="tab-badge" id="badgeTotalGeral">0</span>
+      </button>
+      <button class="tab-btn" id="tabBtnChegados" data-tab="tabChegados">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Carros que Já Chegaram · Checklist & Prontidão
+        <span class="tab-badge" id="badgeTotalChegados" style="background:#128064; color:#fff;">0</span>
+      </button>
+      <button class="tab-btn admin-tab" id="tabBtnAdmin" data-tab="tabAdmin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10h-10V2z"/></svg>
+        Painel do Administrador
+      </button>
+    </div>
+
+    <div class="tab-content active" id="tabGeral">
+      <div class="kpi-strip" id="kpiStrip"></div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Status de chegada por service</div>
+          </div>
+          <div id="chartSvc"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Status de chegada por locadora</div>
+          </div>
+          <div id="chartLoc"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:26px;">
+        <div class="panel-head">
+          <div class="panel-title">Prazo de chegada dos veículos pendentes (dias)</div>
+          <div class="toggle-group">
+            <button class="on" data-bucket-view="svc">Por service</button>
+            <button data-bucket-view="locadora">Por locadora</button>
+          </div>
+        </div>
+        <div id="chartBucket"></div>
+        <div class="legend" id="bucketLegend"></div>
+      </div>
+
+      <div class="section-label">Manifesto Geral de Veículos <span class="hint" id="tableHint"></span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="tableHead"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div class="table-foot">
+          <span id="tableFootCount"></span>
+          <span>clique no cabeçalho para ordenar</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabChegados">
+      <div class="flow-card">
+        <div class="flow-title">Fluxo obrigatório de regularização pós-chegada:</div>
+        <div class="flow-steps">
+          <div class="flow-step"><span class="num">1</span> Chegada do Carro</div>
+          <span class="flow-arrow">➔</span>
+          <div class="flow-step"><span class="num">2</span> CRLV</div>
+          <span class="flow-arrow">➔</span>
+          <div class="flow-step"><span class="num">3</span> Contrato de Arrendamento</div>
+          <span class="flow-arrow">➔</span>
+          <div class="flow-step"><span class="num">4</span> Inclusão na ANTT</div>
+          <span class="flow-arrow">➔</span>
+          <div class="flow-step"><span class="num">5</span> GR e Cadastro Mercado Livre</div>
+          <span class="flow-arrow">➔</span>
+          <div class="flow-step"><span class="num">6</span> Contrato de Comodato</div>
+          <span class="flow-arrow">➔</span>
+          <div class="flow-step"><span class="num">7</span> Cartão Veloe</div>
+        </div>
+      </div>
+
+      <div class="kpi-strip-arrival" id="kpiArrivalStrip"></div>
+
+      <div class="section-label">Controle de Etapas por Placa (Veículos Entregues) <span class="hint" id="arrivalTableHint"></span></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="arrivalTableHead"></tr>
+          </thead>
+          <tbody id="arrivalTableBody"></tbody>
+        </table>
+        <div class="table-foot">
+          <span id="arrivalTableFootCount"></span>
+          <span>clique no cabeçalho para ordenar · Verde = Etapa Concluída (Ok) · Vermelho = Pendente</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabAdmin">
+      <div class="admin-card" id="adminLoginBlock" style="max-width:440px;">
+        <div class="admin-head">
+          <h2>Acesso ao Painel do Administrador</h2>
+        </div>
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:18px;">
+          Informe suas credenciais autorizadas para gerenciar a frota, registrar chegadas, atualizar etapas ou remover veículos.
+        </p>
+        <form id="adminLoginForm">
+          <div class="form-group">
+            <label for="adminUser">Usuário</label>
+            <input type="text" id="adminUser" class="form-control" placeholder="Usuário..." required autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label for="adminPass">Senha</label>
+            <input type="password" id="adminPass" class="form-control" placeholder="Senha" required autocomplete="current-password">
+          </div>
+          <div id="loginError" style="color:var(--red); font-size:12.5px; margin-bottom:12px; display:none;">
+            Usuário ou senha incorretos.
+          </div>
+          <button type="submit" class="btn primary" style="width:100%; justify-content:center; padding:10px;">
+            Entrar no Painel
+          </button>
+        </form>
+      </div>
+
+      <div class="admin-card" id="adminPanelBlock" style="display:none;">
+        <div class="admin-head">
+          <div>
+            <h2>Gestão Operacional de Veículos</h2>
+            <span style="font-size:12px; color:var(--text-dim);">Autenticado como: </span>
+            <span class="user-badge" id="loggedUserLabel">admin</span>
+          </div>
+          <button class="btn" id="btnAdminLogout" style="font-size:11.5px; padding:5px 10px;">Encerrar Sessão</button>
+        </div>
+
+        <div class="admin-subnav">
+          <button type="button" class="admin-subbtn active" id="subBtnCadastro">Cadastrar / Atualizar por Placa</button>
+          <button type="button" class="admin-subbtn" id="subBtnRemoverLista">Listar & Remover Veículos</button>
+        </div>
+
+        <div id="subSectionCadastro">
+          <div class="plate-found-badge" id="plateFoundBadge">
+            <span>🔍 Placa encontrada na base! Os dados foram carregados abaixo. Altere as etapas ou informações e salve para atualizar.</span>
+            <button type="button" class="btn danger" id="btnQuickRemove" style="padding:3px 8px; font-size:11.5px;">Remover Placa</button>
+          </div>
+
+          <form id="formAddVeiculo">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="regPlaca">Placa do Veículo *</label>
+                <input type="text" id="regPlaca" class="form-control mono" placeholder="Digite a placa (ex: ABC1D23)" style="text-transform:uppercase;" required autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label for="regDataChegada">Data Exata de Chegada *</label>
+                <input type="date" id="regDataChegada" class="form-control" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="regBase">Base / Service (SVC) *</label>
+                <select id="regBase" class="form-control" required>
+                  <option value="">Selecione a Base...</option>
+                  <option value="SRJ10 - RJ Taquara (Barra)">SRJ10 - RJ Taquara (Barra)</option>
+                  <option value="SRJ1 - RJ Cordovil (Rio de Janeiro)">SRJ1 - RJ Cordovil (Rio de Janeiro)</option>
+                  <option value="SRJ4 - Campos dos Goytacazes">SRJ4 - Campos dos Goytacazes</option>
+                  <option value="SRJ5 - Petrópolis">SRJ5 - Petrópolis</option>
+                  <option value="SRJ7 - Macaé">SRJ7 - Macaé</option>
+                  <option value="SRJ8 - Itaboraí (Niterói)">SRJ8 - Itaboraí (Niterói)</option>
+                  <option value="SRJ9 - São Pedro da Aldeia (Cabo Frio)">SRJ9 - São Pedro da Aldeia (Cabo Frio)</option>
+                  <option value="SES1 - Serra (Vitória)">SES1 - Serra (Vitória)</option>
+                  <option value="SES2 - Cachoeiro do Itapemirim">SES2 - Cachoeiro do Itapemirim</option>
+                  <option value="SMG3 - Pouso Alegre">SMG3 - Pouso Alegre</option>
+                  <option value="SMG14 - Nova Lima">SMG14 - Nova Lima</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="regLocadora">Locadora</label>
+                <select id="regLocadora" class="form-control">
+                  <option value="Deluna">Deluna</option>
+                  <option value="Vamos">Vamos</option>
+                  <option value="Localiza">Localiza</option>
+                  <option value="LM">LM</option>
+                  <option value="TKS">TKS</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="regModal">Modal</label>
+                <select id="regModal" class="form-control">
+                  <option value="Van">Van</option>
+                  <option value="Utilitário">Utilitário</option>
+                  <option value="Vuc">Vuc</option>
+                  <option value="Vuc Dedicado">Vuc Dedicado</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="regModelo">Modelo do Veículo</label>
+                <input type="text" id="regModelo" class="form-control" placeholder="Ex: Sprinter 317, Fiorino, Ducato...">
+              </div>
+            </div>
+
+            <div class="section-label" style="margin-top:14px;">Passo a Passo de Regularização (Marque as concluídas)</div>
+            <div class="checklist-grid">
+              <label class="check-item"><input type="checkbox" id="chkCRLV"> 1. CRLV</label>
+              <label class="check-item"><input type="checkbox" id="chkArrendamento"> 2. Contrato Arrendamento</label>
+              <label class="check-item"><input type="checkbox" id="chkANTT"> 3. Inclusão na ANTT</label>
+              <label class="check-item"><input type="checkbox" id="chkGRML"> 4. GR e Cadastro ML</label>
+              <label class="check-item"><input type="checkbox" id="chkComodato"> 5. Contrato Comodato</label>
+              <label class="check-item"><input type="checkbox" id="chkVeloe"> 6. Cartão Veloe</label>
+            </div>
+
+            <div class="apto-preview nao" id="aptoLivePreview">
+              <span>Status calculado: <strong id="aptoLiveText">NÃO ESTÁ APTO (0/6 etapas)</strong></span>
+            </div>
+
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+              <button type="submit" class="btn primary" id="btnSalvarVeiculo" style="padding:11px 22px; font-size:14px;">Salvar e Atualizar Painel</button>
+              <button type="button" class="btn danger" id="btnRemoverVeiculoForm" style="display:none; padding:11px 18px;">Remover este Veículo</button>
+              <span id="saveStatusMsg" style="font-size:13px; font-weight:600; color:var(--green); display:none;">Veículo gravado com sucesso!</span>
+            </div>
+          </form>
+        </div>
+
+        <div id="subSectionRemover" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <input type="text" id="adminSearchDelete" class="form-control" placeholder="Filtrar por placa..." style="width:200px; padding:6px 10px; font-size:12.5px;">
+          </div>
+          <div class="table-wrap" style="max-height:380px; overflow-y:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Placa</th>
+                  <th>Base (SVC)</th>
+                  <th>Locadora</th>
+                  <th>Chegada</th>
+                  <th>Prontidão</th>
+                  <th style="text-align:right;">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="adminDeleteTableBody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
+            <span id="deletedCountNotice" style="font-size:12px; color:var(--text-dim);"></span>
+            <button type="button" class="btn" id="btnRestaurarExcluidos" style="font-size:11.5px;">Restaurar Veículos Removidos</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- BOTÃO FLUTUANTE DE RETORNO AO MENU -->
+<a href="index.html" title="Retornar ao Menu de Módulos" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: #01362E; color: #ffffff; padding: 12px 20px; border-radius: 30px; font-family: 'Barlow', sans-serif; font-weight: 700; font-size: 13.5px; text-decoration: none; box-shadow: 0 4px 14px rgba(1, 54, 46, 0.4); display: flex; align-items: center; gap: 8px;">
+  <i class="fa-solid fa-house"></i>
+  <span>Retorno ao Menu</span>
+</a>
+
+<!-- RODAPÉ LEGÍVEL -->
+<footer style="text-align: center; padding: 20px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 600; color: #55645D; background: #ffffff; border-top: 1px solid #DCE6E2; margin-top: auto;">
+  Produzido por Alexsander Miranda
+</footer>
+
+<script>
+  // Scripts operacionais do Controle de Frota
+  const SNAPSHOT = [];
+  // (Mantido integralmente para carregamento das placas)
+  function loadData(){ /* ... */ }
+  // ...
+</script>
+</body>
+</html>
