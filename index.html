@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal DeLuna · Controle de Operações</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --brand: #01362E;
+      --brand-light: #0E6B57;
+      --brand-hover: #128064;
+      --bg: #F4F6F8;
+      --text: #142822;
+      --text-muted: #55645D;
+      --red: #B5443A;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Barlow', sans-serif; }
+    body {
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      padding-bottom: 50px;
+    }
+    .panel-container {
+      background: #ffffff;
+      width: 100%;
+      max-width: 560px;
+      border-radius: 12px;
+      box-shadow: 0 12px 32px rgba(1, 54, 46, 0.15);
+      padding: 36px;
+    }
+    .logo-container { text-align: center; margin-bottom: 20px; }
+    .logo-container h1 { color: var(--brand); font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .logo-container p { color: var(--text-muted); font-size: 14px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px 14px; border: 1px solid #DCE6E2; border-radius: 6px; font-size: 14px; outline: none; }
+    .form-control:focus { border-color: var(--brand-light); }
+    .btn { width: 100%; background: var(--brand); color: #fff; border: none; padding: 12px; border-radius: 6px; font-size: 14.5px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    .btn:hover { background: var(--brand-hover); }
+    .btn.danger { background: var(--red); }
+    .btn.danger:hover { background: #96352D; }
+    .btn.secondary { background: #78827D; }
+    .btn.secondary:hover { background: #5E6763; }
+    
+    #errorMsg { color: var(--red); font-size: 13px; font-weight: 600; text-align: center; margin-top: 10px; display: none; }
+    
+    #moduleSelection, #adminAuthModal, #registerForm, #usersManagementView, #supabaseConfigModal { display: none; }
+    
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .module-card {
+      background: #EEF3F1;
+      border: 1px solid #DCE6E2;
+      border-radius: 8px;
+      padding: 16px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .module-card:hover {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+    .module-card .icon { font-size: 24px; margin-bottom: 8px; }
+    .module-card .title { font-weight: 700; font-size: 12px; line-height: 1.2; }
+    
+    .logout-btn { background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; width: 100%; margin-top: 16px; text-decoration: underline; }
+    
+    .permissions-box {
+      background: #F8F9F8;
+      border: 1px solid #DCE6E2;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+    .permissions-box label {
+      font-weight: 500;
+      font-size: 12.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    .permissions-box input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-top: 10px;
+    }
+    .user-table th, .user-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #DCE6E2;
+      text-align: left;
+    }
+    .user-table th { background: #EEF3F1; color: var(--text-muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="panel-container">
+    
+    <!-- CONFIGURAÇÃO INICIAL DO SUPABASE (CASO NÃO CONFIGURADO) -->
+    <div id="supabaseConfigModal">
+      <div class="logo-container">
+        <h1>Conectar ao Supabase</h1>
+        <p>Insira as credenciais do seu projeto Supabase (FrotaDeluna):</p>
+      </div>
+      <form id="supabaseConfigForm">
+        <div class="form-group">
+          <label for="sbUrl">Supabase URL</label>
+          <input type="text" id="sbUrl" class="form-control" placeholder="https://seu-projeto.supabase.co" required>
+        </div>
+        <div class="form-group">
+          <label for="sbKey">Supabase Anon Key</label>
+          <input type="text" id="sbKey" class="form-control" placeholder="eyJhbGci..." required>
+        </div>
+        <button type="submit" class="btn" style="background: #0E6B57;">Conectar Base de Dados</button>
+      </form>
+    </div>
+
+    <!-- 1. TELA DE LOGIN -->
+    <div id="loginView">
+      <div class="logo-container">
+        <h1>Portal DeLuna</h1>
+        <p>Acesso Restrito · Nuvem Supabase</p>
+      </div>
+      
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Usuário</label>
+          <input type="text" id="username" class="form-control" placeholder="Digite seu usuário" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input type="password" id="password" class="form-control" placeholder="Digite sua senha" required autocomplete="current-password">
+        </div>
+        
+        <button type="submit" class="btn">Entrar no Portal</button>
+        <div id="errorMsg">Usuário ou senha incorretos.</div>
+        
+        <div style="margin-top: 14px; text-align: center;">
+          <button type="button" id="openAdminAuthBtn" style="background:none; border:none; color: #0E6B57; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline;">
+            Cadastrar novo usuário / Gerenciar Usuários
+          </button>
+        </div>
+        <div style="margin-top: 8px; text-align: center;">
+          <button type="button" onclick="resetSupabaseConfig()" style="background:none; border:none; color: #78827D; font-size: 11px; cursor: pointer; text-decoration: underline;">
+            Reconfigurar Chaves Supabase
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 2. MODAL DE SEGURANÇA: EXIGIR LOGIN DO ADM ANTES DE CADASTRAR/EDITAR -->
+    <div id="adminAuthModal">
+      <div class="logo-container">
+        <h1>Área Restrita do ADM</h1>
+        <p>Insira as credenciais de Administrador para prosseguir:</p>
+      </div>
+      <form id="adminAuthForm">
+        <div class="form-group">
+          <label for="admUserCheck">Usuário ADM</label>
+          <input type="text" id="admUserCheck" class="form-control" placeholder="Apenas adm autorizado" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="admPassCheck">Senha ADM</label>
+          <input type="password" id="admPassCheck" class="form-control" placeholder="Senha do Administrador" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn" style="background: #0E6B57;">Validar ADM</button>
+        <button type="button" class="logout-btn" onclick="cancelAdminAuth()">Cancelar</button>
+        <div id="admAuthError" style="color: var(--red); font-size: 12px; font-weight: 600; text-align: center; margin-top: 8px; display: none;">Acesso negado. Apenas o administrador principal pode gerenciar usuários.</div>
+      </form>
+    </div>
+
+    <!-- 3. FORMULÁRIO DE CADASTRO / EDIÇÃO DE USUÁRIO -->
+    <div id="registerForm">
+      <div class="logo-container" style="margin-bottom: 12px;">
+        <h1 id="registerFormTitle">Cadastrar Novo Usuário</h1>
+        <p>Defina o perfil de acesso na nuvem:</p>
+      </div>
+      
+      <form id="saveUserForm">
+        <input type="hidden" id="editOriginalUsername" value="">
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label for="regUsername">Usuário (Login)</label>
+          <input type="text" id="regUsername" class="form-control" placeholder="Login" required autocomplete="off">
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label for="regPassword">Senha</label>
+          <input type="text" id="regPassword" class="form-control" placeholder="Senha" required autocomplete="off">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label for="regRole">Tipo de Perfil</label>
+          <select id="regRole" class="form-control" onchange="toggleRoleSelection()">
+            <option value="restrito">Usuário Restrito</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+
+        <div id="permissionsContainer">
+          <label style="font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 4px; display: block;">Telas Permitidas (Usuário Restrito):</label>
+          <div class="permissions-box">
+            <label><input type="checkbox" name="perm" value="frota" checked> Controle de Frota</label>
+            <label><input type="checkbox" name="perm" value="custos" checked> Gestão de Custos</label>
+            <label><input type="checkbox" name="perm" value="cadastro" checked> Tela de Cadastro</label>
+            <label><input type="checkbox" name="perm" value="captacao" checked> Captação</label>
+            <label><input type="checkbox" name="perm" value="betafleet" checked> Betafleet</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" style="background: #128064;">Salvar na Nuvem</button>
+        <button type="button" class="btn secondary" onclick="openUsersManagement()">Ver Lista de Usuários</button>
+        <button type="button" class="logout-btn" onclick="backToLoginMain()">Voltar ao Início</button>
+        <div id="regErrorMsg" style="color: var(--red); font-size: 12px; font-weight: 600; text-align: center; margin-top: 6px; display: none;"></div>
+      </form>
+    </div>
+
+    <!-- 4. PAINEL DE GERENCIAR / EDITAR USUÁRIOS CADASTRADOS -->
+    <div id="usersManagementView">
+      <div class="logo-container" style="margin-bottom: 12px;">
+        <h1>Gerenciar Usuários (Nuvem)</h1>
+        <p>Lista sincronizada com o Supabase:</p>
+      </div>
+
+      <div style="max-height: 240px; overflow-y: auto;">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Perfil</th>
+              <th style="text-align: right;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <!-- Renderizado via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <button class="btn" style="margin-top: 16px;" onclick="startNewUserRegistration()">+ Cadastrar Novo Usuário</button>
+      <button class="logout-btn" onclick="backToLoginMain()">Voltar ao Início</button>
+    </div>
+
+    <!-- 5. VIEW DE SELEÇÃO DE MÓDULOS (APÓS LOGIN COM SUCESSO) -->
+    <div id="moduleSelection">
+      <div class="logo-container">
+        <h1>Bem-vindo, <span id="userNameDisplay"></span>!</h1>
+        <p>Selecione o módulo autorizado que deseja acessar:</p>
+      </div>
+
+      <div class="module-grid" id="moduleGrid">
+        <!-- Renderizado dinamicamente via JS conforme permissões -->
+      </div>
+
+      <button class="logout-btn" onclick="logout()">Encerrar Sessão</button>
+    </div>
+
+  </div>
+
+  <!-- RODAPÉ LEGÍVEL -->
+  <footer style="text-align: center; padding: 16px; font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 600; color: var(--text-muted); width: 100%; position: absolute; bottom: 0; left: 0;">
+    Produzido por Alexsander Miranda
+  </footer>
+
+  <script>
+    // Configuração do Supabase
+    let sbUrl = localStorage.getItem('deluna_sb_url') || '';
+    let sbKey = localStorage.getItem('deluna_sb_key') || '';
+    let _supabase = null;
+
+    if (sbUrl && sbKey) {
+      _supabase = window.supabase.createClient(sbUrl, sbKey);
+    }
+
+    const DEFAULT_USERS = {
+      'adm': { pass: 'frota2026', role: 'admin', perms: ['frota', 'custos', 'cadastro', 'captacao', 'betafleet'] },
+      'guilherme': { pass: 'frota2026', role: 'admin', perms: ['frota', 'custos', 'cadastro', 'captacao', 'betafleet'] },
+      'mariana': { pass: 'frota2026', role: 'admin', perms: ['frota', 'custos', 'cadastro', 'captacao', 'betafleet'] },
+      'alexsander': { pass: 'frota2026', role: 'admin', perms: ['frota', 'custos', 'cadastro', 'captacao', 'betafleet'] }
+    };
+
+    async function getAllUsers() {
+      let users = { ...DEFAULT_USERS };
+      if (_supabase) {
+        try {
+          const { data, error } = await _supabase.from('users').select('*');
+          if (!error && data) {
+            data.forEach(row => {
+              let parsedPerms = row.perms;
+              if (typeof parsedPerms === 'string') {
+                try { parsedPerms = JSON.parse(parsedPerms); } catch(e) { parsedPerms = []; }
+              }
+              users[row.username.toLowerCase()] = {
+                pass: row.password,
+                role: row.role || 'restrito',
+                perms: parsedPerms || []
+              };
+            });
+          }
+        } catch(err) {
+          console.warn('Usando modo offline/fallback:', err);
+        }
+      }
+      return users;
+    }
+
+    const ALL_MODULES = [
+      { id: 'frota', title: 'Controle de Frota', icon: '🚛', url: 'portal_frota.html' },
+      { id: 'custos', title: 'Gestão de Custos', icon: '💰', url: 'painel_frota.html' },
+      { id: 'cadastro', title: 'Tela de Cadastro', icon: '📝', action: "alert('Módulo de Cadastro em desenvolvimento.')" },
+      { id: 'captacao', title: 'Captação', icon: '🎯', action: "alert('Módulo de Captação em desenvolvimento.')" },
+      { id: 'betafleet', title: 'Betafleet', icon: '🚀', url: 'https://data-fleet.vercel.app/login', external: true }
+    ];
+
+    async function checkAuth() {
+      if (!sbUrl || !sbKey || !_supabase) {
+        document.getElementById('supabaseConfigModal').style.display = 'block';
+        document.getElementById('loginView').style.display = 'none';
+        return;
+      }
+
+      const loggedUser = sessionStorage.getItem('admin_logged_user');
+      const users = await getAllUsers();
+      
+      if (loggedUser && users[loggedUser.toLowerCase()]) {
+        document.getElementById('supabaseConfigModal').style.display = 'none';
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('adminAuthModal').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('usersManagementView').style.display = 'none';
+        document.getElementById('moduleSelection').style.display = 'block';
+        
+        const userData = users[loggedUser.toLowerCase()];
+        const role = userData.role || 'admin';
+        const perms = (role === 'admin') ? ['frota', 'custos', 'cadastro', 'captacao', 'betafleet'] : (userData.perms || []);
+        
+        document.getElementById('userNameDisplay').textContent = loggedUser.charAt(0).toUpperCase() + loggedUser.slice(1);
+        
+        const grid = document.getElementById('moduleGrid');
+        grid.innerHTML = '';
+        
+        ALL_MODULES.forEach(mod => {
+          if (perms.includes(mod.id)) {
+            const a = document.createElement('a');
+            a.className = 'module-card';
+            if (mod.url) {
+              a.href = mod.url;
+              if (mod.external) a.target = '_blank';
+            } else if (mod.action) {
+              a.href = '#';
+              a.setAttribute('onclick', mod.action);
+            }
+            a.innerHTML = `<span class="icon">${mod.icon}</span><span class="title">${mod.title}</span>`;
+            grid.appendChild(a);
+          }
+        });
+      } else {
+        backToLoginMain();
+      }
+    }
+
+    document.getElementById('supabaseConfigForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const url = document.getElementById('sbUrl').value.trim();
+      const key = document.getElementById('sbKey').value.trim();
+      if (url && key) {
+        localStorage.setItem('deluna_sb_url', url);
+        localStorage.setItem('deluna_sb_key', key);
+        sbUrl = url;
+        sbKey = key;
+        _supabase = window.supabase.createClient(sbUrl, sbKey);
+        checkAuth();
+      }
+    });
+
+    function resetSupabaseConfig() {
+      localStorage.removeItem('deluna_sb_url');
+      localStorage.removeItem('deluna_sb_key');
+      location.reload();
+    }
+
+    function backToLoginMain() {
+      if (!sbUrl || !sbKey) {
+        document.getElementById('supabaseConfigModal').style.display = 'block';
+        document.getElementById('loginView').style.display = 'none';
+        return;
+      }
+      document.getElementById('supabaseConfigModal').style.display = 'none';
+      document.getElementById('loginView').style.display = 'block';
+      document.getElementById('adminAuthModal').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('usersManagementView').style.display = 'none';
+      document.getElementById('moduleSelection').style.display = 'none';
+      document.getElementById('loginForm').reset();
+      document.getElementById('errorMsg').style.display = 'none';
+    }
+
+    document.getElementById('openAdminAuthBtn').addEventListener('click', function() {
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('adminAuthModal').style.display = 'block';
+      document.getElementById('adminAuthForm').reset();
+      document.getElementById('admAuthError').style.display = 'none';
+    });
+
+    function cancelAdminAuth() {
+      backToLoginMain();
+    }
+
+    document.getElementById('adminAuthForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const u = document.getElementById('admUserCheck').value.trim().toLowerCase();
+      const p = document.getElementById('admPassCheck').value.trim();
+      const users = await getAllUsers();
+
+      if (users[u] && users[u].pass === p && users[u].role === 'admin') {
+        document.getElementById('adminAuthModal').style.display = 'none';
+        openUsersManagement();
+      } else {
+        document.getElementById('admAuthError').style.display = 'block';
+      }
+    });
+
+    async function openUsersManagement() {
+      document.getElementById('adminAuthModal').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('usersManagementView').style.display = 'block';
+      await renderUsersTable();
+    }
+
+    async function renderUsersTable() {
+      const users = await getAllUsers();
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = '';
+
+      Object.keys(users).forEach(username => {
+        const uData = users[username];
+        const isDefault = DEFAULT_USERS[username] !== undefined;
+        const tr = document.createElement('tr');
+        
+        tr.innerHTML = `
+          <td><strong>${username}</strong></td>
+          <td>${uData.role === 'admin' ? '<span style="color:var(--brand); font-weight:600;">Administrador</span>' : 'Usuário Restrito'}</td>
+          <td style="text-align: right;">
+            <button class="btn" style="padding:4px 8px; font-size:11px; width:auto; display:inline-block;" onclick="editUser('${username}')">Editar</button>
+            ${!isDefault ? `<button class="btn danger" style="padding:4px 8px; font-size:11px; width:auto; display:inline-block; margin-left:4px;" onclick="deleteUser('${username}')">Excluir</button>` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function startNewUserRegistration() {
+      document.getElementById('usersManagementView').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+      document.getElementById('registerFormTitle').textContent = 'Cadastrar Novo Usuário';
+      document.getElementById('editOriginalUsername').value = '';
+      document.getElementById('saveUserForm').reset();
+      document.getElementById('regRole').value = 'restrito';
+      toggleRoleSelection();
+    }
+
+    async function editUser(username) {
+      const users = await getAllUsers();
+      const uData = users[username];
+      if (!uData) return;
+
+      document.getElementById('usersManagementView').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+      document.getElementById('registerFormTitle').textContent = 'Editar Usuário: ' + username;
+      
+      document.getElementById('editOriginalUsername').value = username;
+      document.getElementById('regUsername').value = username;
+      document.getElementById('regPassword').value = uData.pass;
+      document.getElementById('regRole').value = uData.role || 'restrito';
+      
+      toggleRoleSelection();
+
+      const perms = uData.perms || [];
+      const checkboxes = document.querySelectorAll('input[name="perm"]');
+      checkboxes.forEach(cb => {
+        cb.checked = perms.includes(cb.value);
+      });
+    }
+
+    function toggleRoleSelection() {
+      const role = document.getElementById('regRole').value;
+      const container = document.getElementById('permissionsContainer');
+      if (role === 'admin') {
+        container.style.opacity = '0.5';
+        const checkboxes = document.querySelectorAll('input[name="perm"]');
+        checkboxes.forEach(cb => cb.checked = true);
+      } else {
+        container.style.opacity = '1';
+      }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const u = document.getElementById('username').value.trim().toLowerCase();
+      const p = document.getElementById('password').value.trim();
+      const users = await getAllUsers();
+      
+      if (users[u] && users[u].pass === p) {
+        sessionStorage.setItem('admin_logged_user', u);
+        sessionStorage.setItem('auth_gestao_custos', 'true');
+        document.getElementById('errorMsg').style.display = 'none';
+        checkAuth();
+      } else {
+        document.getElementById('errorMsg').style.display = 'block';
+      }
+    });
+
+    document.getElementById('saveUserForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const origName = document.getElementById('editOriginalUsername').value.trim().toLowerCase();
+      const u = document.getElementById('regUsername').value.trim().toLowerCase();
+      const p = document.getElementById('regPassword').value.trim();
+      const role = document.getElementById('regRole').value;
+      const err = document.getElementById('regErrorMsg');
+
+      if (!u || !p) return;
+
+      const users = await getAllUsers();
+      
+      if (origName !== u && users[u]) {
+        err.textContent = 'Este nome de usuário já está em uso.';
+        err.style.display = 'block';
+        return;
+      }
+
+      const checkboxes = document.querySelectorAll('input[name="perm"]:checked');
+      const selectedPerms = (role === 'admin') ? ['frota', 'custos', 'cadastro', 'captacao', 'betafleet'] : Array.from(checkboxes).map(cb => cb.value);
+
+      if (_supabase) {
+        if (origName && origName !== u) {
+          await _supabase.from('users').delete().eq('username', origName);
+        }
+
+        const { error } = await _supabase.from('users').upsert([
+          { username: u, password: p, role: role, perms: selectedPerms }
+        ], { onConflict: 'username' });
+
+        if (error) {
+          err.textContent = 'Erro ao salvar na nuvem: ' + error.message;
+          err.style.display = 'block';
+          return;
+        }
+      }
+
+      await openUsersManagement();
+    });
+
+    async function deleteUser(username) {
+      if (confirm(`Deseja realmente excluir o usuário "${username}"?`)) {
+        if (_supabase) {
+          await _supabase.from('users').delete().eq('username', username);
+        }
+        await renderUsersTable();
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('admin_logged_user');
+      sessionStorage.removeItem('auth_gestao_custos');
+      backToLoginMain();
+    }
+
+    checkAuth();
+  </script>
+</body>
+</html>
